@@ -87,7 +87,8 @@ MAX_ACCEPTABLE_SKIP_FRACTION = 0.20  # warn loudly if we lose >20% of tickers
 
 def build_training_rows(years: int = DEFAULT_YEARS_OF_HISTORY,
                          step_days: int = DEFAULT_SNAPSHOT_STEP_DAYS,
-                         tickers: list = None) -> list:
+                         tickers: list = None,
+                         progress_callback=None) -> list:
     """
     Download history for the ticker universe and slide a window through
     each series to build a table of feature snapshots.
