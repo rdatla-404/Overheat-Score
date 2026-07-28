@@ -5,10 +5,6 @@
 # learn what "normal" market behavior looks like. Snapshots that
 # don't fit that pattern are the anomalies stock_bubble_detector.py
 # flags at inference time.
-#
-# Libraries required:
-#   pip install yfinance pandas numpy scikit-learn joblib
-# =============================================================
 
 import argparse
 import logging
