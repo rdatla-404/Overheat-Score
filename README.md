@@ -1,4 +1,4 @@
-# Stock Bubble Detector
+# OverheatScore
 
 ### ML-powered overheating detection for any publicly traded stock
 
