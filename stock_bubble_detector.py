@@ -3,10 +3,6 @@
 # detection model (see train_bubble_model.py) instead of hand-
 # tuned point thresholds. The model is trained offline across a
 # broad universe of tickers and loaded here for inference.
-#
-# Libraries required (install once with pip):
-#   pip install yfinance pandas numpy matplotlib scikit-learn joblib
-# =============================================================
 
 import os
 import time
