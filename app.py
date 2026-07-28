@@ -1,17 +1,6 @@
-# =============================================================
 # app.py
-# Stock Bubble Detector -- Streamlit web app
-# =============================================================
 # A GUI wrapper around stock_bubble_detector.py / train_bubble_model.py.
-# All the actual data fetching, feature engineering, and ML scoring
-# logic lives in those two files -- this file is presentation only.
-#
-# Run with:
-#   streamlit run app.py
-#
-# Libraries required:
-#   pip install -r requirements.txt
-# =============================================================
+
 
 from datetime import datetime, timedelta
 import os
