@@ -116,11 +116,14 @@ def build_training_rows(years: int = DEFAULT_YEARS_OF_HISTORY,
 
     rows = []
     skipped = 0
-    for ticker in tickers:
+    total = len(tickers)
+    for idx, ticker in enumerate(tickers, start=1):
         data = load_stock_data(ticker, start_date, end_date)
         if data is None or len(data) < MIN_HISTORY_DAYS:
             logger.warning(f"Skipping {ticker} -- insufficient history.")
             skipped += 1
+            if progress_callback:
+                progress_callback(idx, total, ticker, 0, skipped=True)
             continue
 
         count_for_ticker = 0
@@ -132,6 +135,8 @@ def build_training_rows(years: int = DEFAULT_YEARS_OF_HISTORY,
                 count_for_ticker += 1
 
         logger.info(f"{ticker}: {count_for_ticker} snapshots")
+        if progress_callback:
+            progress_callback(idx, total, ticker, count_for_ticker, skipped=False)
 
     skip_fraction = skipped / len(tickers) if tickers else 0
     if skip_fraction > MAX_ACCEPTABLE_SKIP_FRACTION:
