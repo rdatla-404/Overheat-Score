@@ -12,7 +12,7 @@ import stock_bubble_detector as sbd
 import train_bubble_model as trainer
 
 st.set_page_config(
-    page_title="OverHeat Score",
+    page_title="Stock Bubble Detector",
     page_icon="chart",
     layout="wide",
 )
@@ -141,7 +141,7 @@ with st.sidebar:
 # -------------------------------------------------------------
 # Main input
 # -------------------------------------------------------------
-st.title("Stock Bubble Detector")
+st.title("Overheat Score")
 st.caption("ML-based bubble risk scoring, powered by Yahoo Finance data.")
 
 with st.expander("Don't know the ticker? Search by company name"):
