@@ -12,7 +12,7 @@ import stock_bubble_detector as sbd
 import train_bubble_model as trainer
 
 st.set_page_config(
-    page_title="Stock Bubble Detector",
+    page_title="OverHeat Score",
     page_icon="chart",
     layout="wide",
 )
