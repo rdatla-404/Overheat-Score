@@ -94,19 +94,50 @@ with st.sidebar:
         st.caption(f"Ticker universe: {info['ticker_universe_size']} tickers")
 
     st.divider()
-    st.caption(
-        "Training downloads several years of history for ~60 tickers "
-        "and can take a few minutes."
+    st.caption("Training settings")
+
+    train_years = st.slider("Years of history per ticker", 2, 10, trainer.DEFAULT_YEARS_OF_HISTORY)
+    contamination = st.slider(
+        "Contamination (expected anomaly fraction)", 0.01, 0.15,
+        trainer.DEFAULT_CONTAMINATION, step=0.01,
     )
+    step_days = st.number_input(
+        "Days between snapshots", min_value=21, max_value=252,
+        value=trainer.DEFAULT_SNAPSHOT_STEP_DAYS, step=21,
+        help="Below 252 trades snapshot independence for a denser training set.",
+    )
+
+    all_symbols = trainer.TICKER_UNIVERSE
+    with st.expander("Customize ticker universe"):
+        chosen_tickers = st.multiselect(
+            "Tickers to train on", options=all_symbols, default=all_symbols,
+        )
+
+    st.caption(f"Training on {len(chosen_tickers)} tickers -- can take a few minutes.")
+
     if st.button("Train / retrain model", use_container_width=True):
-        progress_box = st.empty()
-        with st.spinner("Downloading history and fitting the model..."):
-            progress_box.info("Pulling ticker history -- this is the slow part.")
-            rows = trainer.build_training_rows()
-            progress_box.info(f"Collected {len(rows)} snapshots. Fitting model...")
-            trainer.train_and_save(rows)
+        progress_bar = st.progress(0.0)
+        status_box = st.empty()
+
+        def _on_progress(idx, total, ticker, snapshots, skipped):
+            pct = idx / total
+            progress_bar.progress(pct)
+            verb = "skipped" if skipped else f"{snapshots} snapshots"
+            status_box.info(f"[{idx}/{total}] {ticker}: {verb}")
+
+        rows = trainer.build_training_rows(
+            years=train_years,
+            step_days=int(step_days),
+            tickers=chosen_tickers,
+            progress_callback=_on_progress,
+        )
+        status_box.info(f"Collected {len(rows)} snapshots. Fitting model...")
+        trainer.train_and_save(
+            rows, contamination=contamination, ticker_universe_size=len(chosen_tickers),
+        )
         sbd.reload_model()  # force reload of the new model
-        progress_box.success("Model trained and saved.")
+        progress_bar.progress(1.0)
+        status_box.success("Model trained and saved.")
         st.rerun()
 
     st.divider()
