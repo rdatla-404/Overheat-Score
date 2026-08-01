@@ -10,7 +10,7 @@ import stock_bubble_detector as sbd
 import train_bubble_model as trainer
 
 st.set_page_config(
-    page_title="Overheat Score",
+    page_title="OverHeat Score",
     page_icon="chart",
     layout="wide",
 )
@@ -31,18 +31,6 @@ FEATURE_LABELS = {
     "volatility": "Volatility",
     "accel": "Acceleration",
     "max_drawdown": "Max Drawdown",
-}
-
-# Plain-language explanations, shown via st.metric's `help` tooltip and in
-# the "What do these mean?" expander below the summary metrics. Written for
-# someone with no finance background, not a trading-terms glossary.
-METRIC_HELP = {
-    "price": "The stock's most recent closing price.",
-    "total_return": "How much the price has changed over the selected time window, as a percentage.",
-    "volatility": "How much the price swings up and down. Higher = more unpredictable, choppier price movement.",
-    "max_drawdown": "The biggest drop from a peak to a low point during the selected window. A rough measure of 'how bad could it get.'",
-    "rsi": "Relative Strength Index. A 0-100 score of recent buying vs. selling pressure. Above ~70 often means a stock has been bought up quickly; below ~30 often means it's been sold off quickly.",
-    "ma_ratio": "How far today's price sits above or below its own 200-day average. 1.0x means it's right at its average; higher means it's trading well above its recent norm.",
 }
 
 
@@ -78,7 +66,7 @@ def load_ticker_directory():
 
 
 # -------------------------------------------------------------
-# Sidebar: model status (public) + retrain control (admin-gated)
+# Sidebar: model status + retrain control
 # -------------------------------------------------------------
 with st.sidebar:
     st.header("Model status")
@@ -93,91 +81,66 @@ with st.sidebar:
         st.caption(f"Ticker universe: {info['ticker_universe_size']} tickers")
 
     st.divider()
+    st.caption("Training settings")
+
+    train_years = st.slider("Years of history per ticker", 2, 10, trainer.DEFAULT_YEARS_OF_HISTORY)
+    contamination = st.slider(
+        "Contamination (expected anomaly fraction)", 0.01, 0.15,
+        trainer.DEFAULT_CONTAMINATION, step=0.01,
+    )
+    step_days = st.number_input(
+        "Days between snapshots", min_value=21, max_value=252,
+        value=trainer.DEFAULT_SNAPSHOT_STEP_DAYS, step=21,
+        help="Below 252 trades snapshot independence for a denser training set.",
+    )
+
+    all_symbols = trainer.TICKER_UNIVERSE
+    with st.expander("Customize ticker universe"):
+        chosen_tickers = st.multiselect(
+            "Tickers to train on", options=all_symbols, default=all_symbols,
+        )
+
+    st.caption(f"Training on {len(chosen_tickers)} tickers -- can take a few minutes.")
+
+    if st.button("Train / retrain model", use_container_width=True):
+        progress_bar = st.progress(0.0)
+        status_box = st.empty()
+
+        def _on_progress(idx, total, ticker, snapshots, skipped):
+            pct = idx / total
+            progress_bar.progress(pct)
+            verb = "skipped" if skipped else f"{snapshots} snapshots"
+            status_box.info(f"[{idx}/{total}] {ticker}: {verb}")
+
+        rows = trainer.build_training_rows(
+            years=train_years,
+            step_days=int(step_days),
+            tickers=chosen_tickers,
+            progress_callback=_on_progress,
+        )
+        status_box.info(f"Collected {len(rows)} snapshots. Fitting model...")
+        trainer.train_and_save(
+            rows, contamination=contamination, ticker_universe_size=len(chosen_tickers),
+        )
+        sbd.reload_model()  # force reload of the new model
+        progress_bar.progress(1.0)
+        status_box.success("Model trained and saved.")
+        st.rerun()
+
+    st.divider()
     st.caption(
-        "Overheat Score comes from an Isolation Forest trained to recognize "
+        "Bubble score comes from an Isolation Forest trained to recognize "
         "unusual RSI / MA-ratio / volatility / acceleration combinations, "
         "gated so it only fires in the 'overheating' direction -- not on "
         "crashes or other unrelated anomalies."
     )
-
-    st.divider()
-
-    # -----------------------------------------------------------
-    # Admin-only: retraining touches the live model file and can
-    # take several minutes hitting Yahoo Finance for ~60 tickers.
-    # Gated behind a password stored in Streamlit Secrets so a
-    # public visitor can't trigger it by accident (or on purpose).
-    # -----------------------------------------------------------
-    with st.expander("Admin: retrain model"):
-        admin_password = st.secrets.get("ADMIN_PASSWORD")
-        if not admin_password:
-            st.caption(
-                "No ADMIN_PASSWORD set in Secrets -- retraining is disabled "
-                "until one is configured."
-            )
-        else:
-            entered_password = st.text_input("Admin password", type="password")
-            if entered_password and entered_password != admin_password:
-                st.error("Incorrect password.")
-            elif entered_password == admin_password:
-                st.success("Admin unlocked.")
-                st.caption("Training settings")
-
-                train_years = st.slider(
-                    "Years of history per ticker", 2, 10, trainer.DEFAULT_YEARS_OF_HISTORY
-                )
-                contamination = st.slider(
-                    "Contamination (expected anomaly fraction)", 0.01, 0.15,
-                    trainer.DEFAULT_CONTAMINATION, step=0.01,
-                )
-                step_days = st.number_input(
-                    "Days between snapshots", min_value=21, max_value=252,
-                    value=trainer.DEFAULT_SNAPSHOT_STEP_DAYS, step=21,
-                    help="Below 252 trades snapshot independence for a denser training set.",
-                )
-
-                all_symbols = trainer.TICKER_UNIVERSE
-                with st.expander("Customize ticker universe"):
-                    chosen_tickers = st.multiselect(
-                        "Tickers to train on", options=all_symbols, default=all_symbols,
-                    )
-
-                st.caption(f"Training on {len(chosen_tickers)} tickers -- can take a few minutes.")
-
-                if st.button("Train / retrain model", use_container_width=True):
-                    progress_bar = st.progress(0.0)
-                    status_box = st.empty()
-
-                    def _on_progress(idx, total, ticker, snapshots, skipped):
-                        pct = idx / total
-                        progress_bar.progress(pct)
-                        verb = "skipped" if skipped else f"{snapshots} snapshots"
-                        status_box.info(f"[{idx}/{total}] {ticker}: {verb}")
-
-                    rows = trainer.build_training_rows(
-                        years=train_years,
-                        step_days=int(step_days),
-                        tickers=chosen_tickers,
-                        progress_callback=_on_progress,
-                    )
-                    status_box.info(f"Collected {len(rows)} snapshots. Fitting model...")
-                    trainer.train_and_save(
-                        rows, contamination=contamination, ticker_universe_size=len(chosen_tickers),
-                    )
-                    sbd.reload_model()  # force reload of the new model
-                    progress_bar.progress(1.0)
-                    status_box.success("Model trained and saved.")
-                    st.rerun()
 
 
 # -------------------------------------------------------------
 # Main input
 # -------------------------------------------------------------
 st.title("Overheat Score")
-st.caption(
-    "Enter any stock ticker to see how statistically 'overheated' it looks "
-    "compared to its own historical norms -- powered by Yahoo Finance data."
-)
+st.caption("ML-based bubble risk scoring, powered by Yahoo Finance data.")
 
 with st.expander("Don't know the ticker? Search by company name"):
     ticker_dir = load_ticker_directory()
@@ -204,8 +167,6 @@ with col_c:
     st.write("")
     analyze_clicked = st.button("Analyze", type="primary", use_container_width=True)
 
-st.caption("New here? Try a well-known ticker like NVDA, AAPL, or TSLA to start.")
-
 if "last_ticker" not in st.session_state:
     st.session_state.last_ticker = None
 
@@ -223,9 +184,7 @@ if analyze_clicked and ticker_input:
     if data is None or data.empty:
         st.error(
             f"Could not load data for '{ticker_input}'. "
-            "Double-check the spelling -- ticker symbols are usually 1-5 letters "
-            "(e.g. AAPL for Apple, NVDA for Nvidia). If the symbol looks right, "
-            "this stock may not be covered by the data source, or may be delisted."
+            "Double-check the ticker symbol and try again."
         )
     else:
         st.session_state.last_ticker = ticker_input
@@ -236,39 +195,19 @@ if st.session_state.get("last_ticker") and "data" in st.session_state:
     data = st.session_state.data
 
     # ---- Summary metrics ----
-    # Two rows of three instead of one row of six -- six columns squeeze
-    # unreadably narrow on phone-width screens.
     st.subheader(f"{ticker} summary")
-    with st.spinner("Computing summary metrics..."):
-        row1a, row1b, row1c = st.columns(3)
-        row1a.metric("Price", f"${sbd.get_current_price(data):,.2f}", help=METRIC_HELP["price"])
-        row1b.metric("Total Return", f"{sbd.get_total_return(data):+.1f}%", help=METRIC_HELP["total_return"])
-        row1c.metric("Volatility (ann.)", f"{sbd.get_volatility(data):.1f}%", help=METRIC_HELP["volatility"])
-
-        row2a, row2b, row2c = st.columns(3)
-        row2a.metric("Max Drawdown", f"{sbd.get_max_drawdown(data):.1f}%", help=METRIC_HELP["max_drawdown"])
-        row2b.metric("RSI (14d)", f"{float(sbd.get_rsi(data).iloc[-1]):.1f}", help=METRIC_HELP["rsi"])
-        ratio = sbd.get_price_to_200ma_ratio(data)
-        row2c.metric(
-            "Price / 200MA",
-            f"{float(ratio.iloc[-1]):.2f}x" if ratio is not None else "N/A",
-            help=METRIC_HELP["ma_ratio"],
-        )
-
-    with st.expander("What do these mean?"):
-        for label, explanation in [
-            ("Price", METRIC_HELP["price"]),
-            ("Total Return", METRIC_HELP["total_return"]),
-            ("Volatility", METRIC_HELP["volatility"]),
-            ("Max Drawdown", METRIC_HELP["max_drawdown"]),
-            ("RSI", METRIC_HELP["rsi"]),
-            ("Price / 200-day MA", METRIC_HELP["ma_ratio"]),
-        ]:
-            st.markdown(f"**{label}** -- {explanation}")
+    m1, m2, m3, m4, m5, m6 = st.columns(6)
+    m1.metric("Price", f"${sbd.get_current_price(data):,.2f}")
+    m2.metric("Total Return", f"{sbd.get_total_return(data):+.1f}%")
+    m3.metric("Volatility (ann.)", f"{sbd.get_volatility(data):.1f}%")
+    m4.metric("Max Drawdown", f"{sbd.get_max_drawdown(data):.1f}%")
+    m5.metric("RSI (14d)", f"{float(sbd.get_rsi(data).iloc[-1]):.1f}")
+    ratio = sbd.get_price_to_200ma_ratio(data)
+    m6.metric("Price / 200MA", f"{float(ratio.iloc[-1]):.2f}x" if ratio is not None else "N/A")
 
     st.divider()
 
-    # ---- Overheat score ----
+    # ---- Bubble score ----
     result = sbd.run_bubble_analysis(ticker, data)
     risk_color = RISK_COLORS.get(result["risk_level"], "#757575")
 
@@ -303,10 +242,7 @@ if st.session_state.get("last_ticker") and "data" in st.session_state:
                     "Z-score": list(result["sub_scores"].values()),
                 }
             ).set_index("Feature")
-            st.caption(
-                "How unusual each factor looks vs. this stock's typical range. "
-                "A bar past ±2 means that factor alone looks statistically unusual."
-            )
+            st.caption("Feature z-scores vs. training population (|z| > 2 is unusual)")
             st.bar_chart(z_df)
 
     if result["warnings"] and result["bubble_score"] is not None:
@@ -331,9 +267,8 @@ if st.session_state.get("last_ticker") and "data" in st.session_state:
 
     # ---- Chart ----
     st.subheader("Price & RSI chart")
-    with st.spinner("Rendering chart..."):
-        fig = sbd.plot_stock_detail(ticker, data, show=False, save=False)
-        st.pyplot(fig)
+    fig = sbd.plot_stock_detail(ticker, data, show=False, save=False)
+    st.pyplot(fig)
 
 elif not analyze_clicked:
     st.info("Enter a ticker and click Analyze to get started.")
