@@ -1,4 +1,4 @@
-# OverheatScore
+# Overheat Score
 
 ### ML-powered overheating detection for any publicly traded stock
 
@@ -8,29 +8,29 @@
 [![Data](https://img.shields.io/badge/Data-Yahoo%20Finance-purple.svg)](https://pypi.org/project/yfinance/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-> Enter any stock ticker. An Isolation Forest anomaly model — trained across dozens of tickers' historical behavior — flags when a stock's momentum, valuation extension, volatility, and acceleration look statistically unlike normal market conditions. Gated to fire only on overheating, not crashes. Get a **Bubble Score (0–100)** and personalized strategies.
+> Enter any stock ticker. An Isolation Forest anomaly model — trained across dozens of tickers' historical behavior — flags when a stock's momentum, valuation extension, volatility, and acceleration look statistically unlike normal market conditions. Gated to fire only on overheating, not crashes. Get an **Overheat Score (0–100)** and personalized strategies.
 
 ---
 
 ## Why This Exists
 
-Every major market bubble showed the same handful of warning signs before it collapsed:
+Several major market run-ups showed a similar cluster of warning signs before conditions eventually cooled or corrected:
 
-| Bubble | Year | Crash | Key Signal |
-|--------|------|-------|------------|
+| Period | Year | Outcome | Notable Signal |
+|--------|------|---------|-----------------|
 | Dot-Com | 2000 | NASDAQ −78% | RSI > 85, parabolic price acceleration |
 | Housing Crisis | 2008 | S&P 500 −57% | Extreme volatility, momentum collapse |
 | Crypto Mania | 2021 | Bitcoin −77% | Price 3× above 200-day MA |
 | Meme Stocks | 2021 | GameStop −90% | RSI > 90, extreme acceleration |
 
-Rather than hand-picking thresholds for those signals, this project trains an **Isolation Forest** on real historical data across a diverse universe of tickers, and lets the model learn what "normal" looks like on its own. A stock is flagged when its current feature combination sits statistically outside that learned normal — and only when the anomaly points toward overheating, not toward a crash.
+These are historical patterns, not a forecasting rule — this project doesn't predict *when* or *whether* a correction happens. Instead of hand-picking thresholds for those signals, it trains an **Isolation Forest** on real historical data across a diverse universe of tickers, and lets the model learn what "statistically normal" looks like on its own. A stock is flagged when its current feature combination sits far outside that learned normal — and only when the anomaly points toward overheating, not toward a crash.
 
 ---
 
 ## Features
 
 - **ML-based scoring** — Isolation Forest anomaly detection, not fixed point thresholds
-- **Directional gating** — a stock cratering 40% won't score as a bubble; only "overheating" anomalies count
+- **Directional gating** — a stock cratering 40% won't score as overheated; only "overheating" anomalies count
 - **Three ways to use it** — interactive CLI, Jupyter notebook walkthrough, or a Streamlit web app
 - **Company search** — look up a ticker by company name from a 7,000+ symbol NASDAQ/NYSE/AMEX directory
 - **Model retraining** — retrain from the app's sidebar or via a configurable CLI script
@@ -42,7 +42,7 @@ Rather than hand-picking thresholds for those signals, this project trains an **
 ## Project Structure
 
 ```
-stock-bubble-detector/
+overheat-score/
 │
 ├── stock_bubble_detector.py    # Core: data loading, feature engineering, ML scoring, CLI
 ├── train_bubble_model.py       # Trains the Isolation Forest model (run this first)
@@ -54,6 +54,8 @@ stock-bubble-detector/
 │   └── test_bubble_detector.py # Unit tests (pytest)
 └── README.md                   # This file
 ```
+
+*Note: core module and file names still use the original "bubble_detector" naming internally — only the product's display name and branding changed to Overheat Score. Renaming the files themselves would require updating every import across `app.py`, `train_bubble_model.py`, and the tests, so they're left as-is intentionally.*
 
 ---
 
@@ -80,13 +82,13 @@ python train_bubble_model.py --years 4 --contamination 0.03 --step-days 63
 python stock_bubble_detector.py
 ```
 ```
-  STOCK BUBBLE ANALYZER -- INPUT
+  OVERHEAT SCORE -- INPUT
   Enter stock ticker symbol (e.g. AAPL, TSLA, NVDA): NVDA
   How many years of data to analyze? (1-5, default 2): 2
 
-  BUBBLE REPORT: NVDA
-  Bubble Score : 82.4 / 100  (ML anomaly score)
-  Risk Level   : CRITICAL BUBBLE RISK
+  OVERHEAT REPORT: NVDA
+  Overheat Score : 82.4 / 100  (ML anomaly score)
+  Risk Level     : CRITICAL BUBBLE RISK
 
   Feature Z-Scores (vs. training population, |z| > 2 is unusual):
     RSI                  z= +2.41  [########------------]
@@ -120,7 +122,7 @@ pytest tests/
 3. The score is normalized to **0–100** against the training set's own score distribution.
 4. A **directional gate** checks whether the anomaly points toward overheating (elevated RSI, MA ratio, and acceleration) rather than a crash or an unrelated kind of outlier. If it doesn't, the score is capped low regardless of how anomalous the raw signal was.
 
-| Bubble Score | Risk Level | Suggested Action |
+| Overheat Score | Risk Level | Suggested Action |
 |-------------|-----------|-------------------|
 | 0–9 | Healthy | Hold or accumulate |
 | 10–29 | Low | Monitor |
@@ -140,7 +142,7 @@ After training, `validate_against_known_cases()` runs the model against a handfu
 
 ## Honest Limitations
 
-- **Curated ticker universe, not "all tickers."** Training on the full ~7,000-ticker market would drag the model's sense of "normal" toward thinly-traded penny stocks, making it worse at flagging bubbles in stocks people actually watch. `all_tickers.csv` is a lookup directory for the app's search feature only — it's intentionally not the training set.
+- **Curated ticker universe, not "all tickers."** Training on the full ~7,000-ticker market would drag the model's sense of "normal" toward thinly-traded penny stocks, making it worse at flagging overheating in stocks people actually watch. `all_tickers.csv` is a lookup directory for the app's search feature only — it's intentionally not the training set.
 - **Isolation Forest flags statistical rarity, not "bubble" specifically.** The directional gate reduces false positives on crashes, but this is still anomaly detection, not a certified bubble classifier.
 - **Small validation set.** The known-case sanity check uses a handful of hand-picked historical dates. It catches obviously broken models, not subtle miscalibration.
 - **No guarantee of predictive power.** A high score describes how unusual a stock's current behavior is relative to recent market history — it is not a forecast, and past patterns are not a guarantee of what happens next.
