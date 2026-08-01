@@ -482,7 +482,7 @@ def run_bubble_analysis(ticker: str, data: pd.DataFrame) -> dict:
     # a live bubble, it doesn't confirm one.
     direction_signal = z['rsi'] + z['ma_ratio'] + z['accel']
     if direction_signal <= 0:
-        bubble_score = min(bubble_score, 15.0)
+        bubble_score = min(bubble_score * 0.15, 15.0)
 
     risk_level = assign_risk_level(bubble_score)
 
