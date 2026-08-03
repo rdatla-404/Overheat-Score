@@ -1,11 +1,11 @@
 
-# It downloads several years of history for a broad universe of
-# tickers, slides a window through each ticker's history to build
-# thousands of feature snapshots, and fits an Isolation Forest to
-# learn what "normal" market behavior looks like. Snapshots that
-# don't fit that pattern are the anomalies stock_bubble_detector.py
-# flags at inference time.
-
+""" It downloads several years of history for a broad universe of
+ tickers, slides a window through each ticker's history to build
+ thousands of feature snapshots, and fits an Isolation Forest to
+ learn what "normal" market behavior looks like. Snapshots that
+ don't fit that pattern are the anomalies stock_bubble_detector.py
+ flags at inference time.
+"""
 import argparse
 import logging
 from datetime import datetime, timedelta
