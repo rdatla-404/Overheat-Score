@@ -1,4 +1,6 @@
 # app.py
+# A GUI wrapper around stock_bubble_detector.py / train_bubble_model.py.
+
 
 from datetime import datetime, timedelta
 import os
