@@ -1,8 +1,6 @@
 """
 backtest.py -- does the Overheat Score actually warn before losses?
 
-Put this file next to stock_bubble_detector.py and train_bubble_model.py, then:
-
     python backtest.py
     python backtest.py --extra-test-tickers      # also test on stocks that later fell hard
 
