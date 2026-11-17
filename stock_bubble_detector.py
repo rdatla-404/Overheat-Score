@@ -33,6 +33,20 @@ FEATURE_NAMES = ['rsi', 'ma_ratio', 'volatility', 'accel', 'max_drawdown']
 # SECTION 1: DATA LOADING
 # -------------------------------------------------------------
 
+def _clean_prices(data):
+    """
+    Drop rows Yahoo sometimes returns with a blank/invalid Close (typically today's
+    unfinished row). Without this the latest price, 200-day average and features are NaN.
+    """
+    if data is None or data.empty or 'Close' not in data.columns:
+        return None
+    data = data.copy()
+    data['Close'] = pd.to_numeric(data['Close'], errors='coerce')
+    data = data[np.isfinite(data['Close']) & (data['Close'] > 0)]
+    data = data[~data.index.duplicated(keep='last')].sort_index()
+    return data if not data.empty else None
+
+
 def load_stock_data(
     ticker: str,
     start_date: str,
@@ -68,8 +82,9 @@ def load_stock_data(
         try:
             ticker_obj = yf.Ticker(ticker)
             data = ticker_obj.history(start=start_date, end=end_date)
+            data = _clean_prices(data)
 
-            if data.empty:
+            if data is None or data.empty:
                 logger.warning(
                     f"No data returned for '{ticker}'. "
                     "Check that the ticker symbol is correct."
